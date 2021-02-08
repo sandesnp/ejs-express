@@ -1,9 +1,18 @@
 <%- include('partials/header')-%>
 
-<h1><%= heading %></h1>
-<p><%= content %></p>
-<% posts.map((post)=>{ %>
-<h1><%= post.composeTitle %></h1>
-<p><%= post.composeContent.substring(0,200) %>...<a href=<%= '/posts/'+post.composeTitle.replace(/\s+/g, '-').toLowerCase() %>>Read More</a></p>
-<% }) %> <%- include('partials/footer')-%>
-
+    <h1>
+        <%= heading %>
+    </h1>
+    <p>
+        <%= content %>
+    </p>
+    <% posts.map((post)=>{ %>
+        <h1>
+            <%= post.title %>
+        </h1>
+        <p>
+            <%= post.content.substring(0,200) %>...<a href=<%='/posts/' +post.title.replace(/\s+/g, '-'
+                    ).toLowerCase() %>>Read More</a>
+        </p>
+        <% }) %>
+            <%- include('partials/footer')-%>

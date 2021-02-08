@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const _ = require('lodash');
 const app = express();
 app.set('view engine', 'ejs');
@@ -13,15 +14,44 @@ const aboutContent =
 const contactContent =
 	'Scelerisque eleifend donec pretium vulputate sapien. Rhoncus urna neque viverra justo nec ultrices. Arcu dui vivamus arcu felis bibendum. Consectetur adipiscing elit duis tristique. Risus viverra adipiscing at in tellus integer feugiat. Sapien nec sagittis aliquam malesuada bibendum arcu vitae. Consequat interdum varius sit amet mattis. Iaculis nunc sed augue lacus. Interdum posuere lorem ipsum dolor sit amet consectetur adipiscing elit. Pulvinar elementum integer enim neque. Ultrices gravida dictum fusce ut placerat orci nulla. Mauris in aliquam sem fringilla ut morbi tincidunt. Tortor posuere ac ut consequat semper viverra nam libero.';
 
+mongoose.connect(
+	'mongodb+srv://admin-sandesh:adminsandesh@cluster0.b9kou.mongodb.net/ejsblog',
+	{
+		useUnifiedTopology: true,
+		useFindAndModify: true,
+		useNewUrlParser: true,
+	}
+);
+
+const Blog = mongoose.model(
+	'Blog',
+	mongoose.Schema({
+		title: {
+			type: String,
+			required: true,
+			min: 2,
+			max: 50,
+		},
+		content: {
+			type: String,
+			required: true,
+			min: 2,
+		},
+	})
+);
+
 const posts = [];
-const truncatePost = [];
 
 // Home
 app.get('/', function (req, res) {
-	res.render('home', {
-		heading: 'Hello, Sandesh',
-		content: homeContent,
-		posts: posts,
+	Blog.find(function (err, posts) {
+		if (!err) {
+			res.render('home', {
+				heading: 'Hello, Sandesh',
+				content: homeContent,
+				posts: posts,
+			});
+		}
 	});
 });
 
@@ -42,47 +72,54 @@ app.get('/contact', function (req, res) {
 app.get('/compose', function (req, res) {
 	res.render('compose');
 });
+
 app.post('/compose', function (req, res) {
-	const postValue = posts.filter(
-		(posts) =>
-			_.lowerCase(posts.composeTitle) === _.lowerCase(req.body.composeTitle)
+	Blog.find(
+		{ $text: { $search: req.body.title, $caseSensitive: false } },
+		function (err, postValue) {
+			if (postValue.length > 0) {
+				res.render('home', {
+					heading: 'Error',
+					content: 'Posts with same title has already been created',
+					posts: [],
+				});
+				//seems to continue so giving a return function
+				return;
+			}
+			Blog.create({
+				title: req.body.title,
+				content: req.body.content,
+			});
+			res.redirect('/');
+		}
 	);
-	if (postValue.length > 0) {
-		res.render('home', {
-			heading: 'Error',
-			content: 'Posts with same title has already been created',
-			posts: [],
-		});
-		//seems to continue so giving a return function
-		return;
-	}
-	posts.push({
-		composeTitle: req.body.composeTitle,
-		composeContent: req.body.composeContent,
-	});
-	res.redirect('/');
 });
 
 //Get Single Post
 app.get('/posts/:title', function (req, res) {
-	//using lodash to remove dash. example=> /todays-news
-	const postValue = posts.filter(
-		(posts) => _.lowerCase(posts.composeTitle) === _.lowerCase(req.params.title)
+	Blog.findOne(
+		{
+			$text: { $search: _.lowerCase(req.params.title), $caseSensitive: false },
+		},
+		function (err, postValue) {
+			if (!err) {
+				if (postValue.length === 0) {
+					res.render('home', {
+						heading: 'Error',
+						content: 'Post not found',
+						posts: [],
+					});
+					//seems to continue so giving a return function
+					return;
+				}
+				res.render('home', {
+					heading: postValue.title,
+					content: postValue.content,
+					posts: [],
+				});
+			}
+		}
 	);
-	if (postValue.length < 1) {
-		res.render('home', {
-			heading: 'Error',
-			content: 'Post not found',
-			posts: [],
-		});
-		//seems to continue so giving a return function
-		return;
-	}
-	res.render('home', {
-		heading: postValue[0].composeTitle,
-		content: postValue[0].composeContent,
-		posts: [],
-	});
 });
 
 app.listen(3000, function () {
